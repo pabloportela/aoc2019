@@ -42,8 +42,8 @@ int get_total_fuel_requirements(const vector<string> &lines) {
 }
 
 
-int main() {
-    auto lines = get_lines("day1_input.txt");
+int main(int argc, char **argv) {
+    auto lines = get_lines(argv[1]);
     cout << "Sum of fuel requirements: " << get_total_fuel_requirements(lines) << "\n";
 
     return 0;
