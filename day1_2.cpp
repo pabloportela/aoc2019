@@ -21,8 +21,14 @@ vector<string> get_lines(const char *filename) {
 }
 
 
-int get_module_fuel_requirement(const int mass) {
+int get_gross_module_fuel_requiremet(const int mass) {
     return mass / 3 - 2;
+}
+
+
+int get_module_fuel_requirement(const int mass) {
+    const auto gross = get_gross_module_fuel_requiremet(mass);
+    return gross <= 0 ? 0 : gross + get_module_fuel_requirement(gross);
 }
 
 
