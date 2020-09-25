@@ -1,3 +1,6 @@
+import sys
+
+
 def has_no_downward_sequence(number: str) -> bool:
     assert len(number) > 1
     return all(int(number[i]) <= int(number[i+1]) for i in range(len(number)-1))
@@ -13,7 +16,10 @@ def meets_criteria(number: str) -> bool:
 
 
 def main():
-    answer = sum(1 if meets_criteria(str(i)) else 0 for i in range(152085, 670283 + 1))
+    begin = int(sys.argv[1])
+    end = int(sys.argv[2])
+    assert begin < end
+    answer = sum(1 if meets_criteria(str(i)) else 0 for i in range(begin, end + 1))
     print(f"There are {answer} potentials passwords")
 
 
