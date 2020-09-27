@@ -2,11 +2,10 @@
 
 from functools import total_ordering
 import sys
-from typing import List, Tuple, Optional, Iterator, Set, Dict
+from typing import List, Tuple, Optional, Iterator
 
 
 def generate_positions(path: str) -> Iterator[Tuple[int, int]]:
-
     def get_deltas(c: str) -> Tuple[int, int]:
         if c == "R":
             return 1, 0
@@ -17,7 +16,7 @@ def generate_positions(path: str) -> Iterator[Tuple[int, int]]:
         if c == "D":
             return 0, -1
 
-        raise ValueError(f'Unknown direction {c}')
+        raise ValueError(f"Unknown direction {c}")
 
     current_x, current_y = 0, 0
 
@@ -29,6 +28,21 @@ def generate_positions(path: str) -> Iterator[Tuple[int, int]]:
             yield current_x, current_y
 
 
+def distance(position: Tuple[int, int]) -> int:
+    return abs(position[0]) + abs(position[1])
+
+
+def closest_distance(positions: List[Tuple[int, int]]) -> Optional[int]:
+    closest = None
+    for p in positions:
+        if closest is None:
+            closest = distance(p)
+        else:
+            closest = min(distance(p), closest)
+
+    return closest
+
+
 def get_lines(filename: str) -> List[str]:
     with open(filename) as f:
         lines = f.readlines()
@@ -36,26 +50,19 @@ def get_lines(filename: str) -> List[str]:
     return lines
 
 
-def get_intersection_steps(steps: List[Tuple[int, int]], xs: Set[Tuple[int, int]]) -> Dict[Tuple[int, int], int]:
-    return {s: i for i, s in enumerate(steps, start=1) if s in xs}
-
-
 def main():
     instructions = get_lines(sys.argv[1])
 
-    steps1 = list(generate_positions(instructions[0]))
-    steps2 = list(generate_positions(instructions[1]))
-    xs = set(steps1).intersection(set(steps2))
+    unique_positions1 = set(list(generate_positions(instructions[0])))
+    unique_positions2 = set(list(generate_positions(instructions[1])))
 
-    if not xs:
+    intersections = unique_positions1.intersection(unique_positions2)
+    answer = closest_distance(intersections)
+
+    if not answer:
         raise Exception("Paths don't intersect")
 
-    q_steps_x_1 = get_intersection_steps(steps1, xs)
-    q_steps_x_2 = get_intersection_steps(steps2, xs)
-
-    answer = min(q_steps_x_1[s] + q_steps_x_2[s] for s in xs)
-    
-    print(f"Least steps intersection distance: {answer}")
+    print(f"Closest intersection distance: {answer}")
 
 
 if __name__ == "__main__":

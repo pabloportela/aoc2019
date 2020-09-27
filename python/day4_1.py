@@ -3,12 +3,12 @@ import sys
 
 def has_no_downward_sequence(number: str) -> bool:
     assert len(number) > 1
-    return all(int(number[i]) <= int(number[i+1]) for i in range(len(number)-1))
+    return all(int(number[i]) <= int(number[i + 1]) for i in range(len(number) - 1))
 
 
 def has_two_consecutive_digits(number: str) -> bool:
     assert len(number) > 1
-    return any(number[i] == number[i+1] for i in range(len(number)-1))
+    return any(number[i] == number[i + 1] for i in range(len(number) - 1))
 
 
 def meets_criteria(number: str) -> bool:

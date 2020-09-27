@@ -2,6 +2,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <cstring>
+#include "day4_2.hpp"
 
 using namespace std;
 
