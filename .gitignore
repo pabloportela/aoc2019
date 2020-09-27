@@ -2,3 +2,4 @@
 *.txt
 *.o
 .mypy_cache
+/bin
