@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -Wall -v -Iinclude -std=c++11
+CXXFLAGS = -Wall -v -Iinclude -std=c++17
 
 # dirs
 SOURCE_DIR = src
