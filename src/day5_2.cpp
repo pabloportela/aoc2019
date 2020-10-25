@@ -30,7 +30,6 @@ void print_intcode_program(vector<int> &intcode_program) {
     cout << endl;
 }
 
-
 inline uint8_t parse_opcode(int instruction) {
     return instruction % 100;
 }
@@ -55,19 +54,17 @@ int parse_parameter(vector<int> &p, int ip, int parameter_offset) {
     uint8_t parameter_mode = parse_parameter_mode(p[ip], parameter_offset);
 
     if (parameter_mode == 0)
-        // position mode
+        // position
         return p[p[ip+parameter_offset]];
 
     if (parameter_mode == 1)
-        // immediate mode
+        // immediate
         return p[ip+parameter_offset];
 
     throw runtime_error("Invalid parameter mode");
 }
 
 void run_intcode_program(vector<int> &p) {
-
-    // printf("at 225: %d\n", p[225]);
 
     // instruction pointer
     size_t ip{};
@@ -125,7 +122,7 @@ void run_intcode_program(vector<int> &p) {
                 break;
 
             case 8:
-                // if first less than second, 1 to third, otherwise 0
+                // if first equals second, 1 to third, otherwise 0
                 if (parse_parameter(p, ip, 1) == parse_parameter(p, ip, 2))
                     p[p[ip+3]] = 1;
                 else
