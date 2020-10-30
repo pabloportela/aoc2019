@@ -50,9 +50,8 @@ class IntcodeProgram {
     bool terminated;
 };
 
-IntcodeProgram::IntcodeProgram(int id, vector<int> text, int phase_setting) : id(id) {
+IntcodeProgram::IntcodeProgram(int id, vector<int> text, int phase_setting) : id(id), text(text) {
     input.push(phase_setting);
-    this->text = text;
     ip = 0;
     terminated = false;
 }
@@ -95,11 +94,9 @@ int IntcodeProgram::parse_parameter(int parameter_offset) {
     throw runtime_error("Invalid parameter mode");
 }
 
-
 void IntcodeProgram::log(const char *msg) {
     cout << "#" << id << " at ip [" << ip << "] : " << msg << endl;
 }
-
 
 int IntcodeProgram::run(int input_signal) {
     // control so we don't overwrite ourselves
@@ -206,7 +203,7 @@ int get_thruster_signal(vector<int> &text, vector<int> &phases) {
 
     int i{}, signal{};
 
-    // do round-robin until a program halts
+    // do round-robin until E Amp program halts
     do {
         signal = programs[i % 5].run(signal);
         i++;
