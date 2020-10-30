@@ -41,6 +41,7 @@ class Image {
     private:
 
     int count_digit_x_in_layer(int, int);
+    inline int get_pixel_in_layer(size_t, size_t, size_t);
     inline size_t count_layers();
     inline size_t layer_size();
     tuple<vector<int>::iterator, vector<int>::iterator> get_layer_range(int);
@@ -74,17 +75,16 @@ int Image::count_digit_x_in_layer(int x, int layer) {
 
 size_t Image::get_layer_with_least_digits_x(int x) {
     int min_so_far{numeric_limits<int>::max()};
-    int layer_wmd{};
+    int layer_wld{};
     for (size_t layer{}, j{count_layers()}; layer<j; layer++) {
         int q_x_digits = count_digit_x_in_layer(x, layer);
         if (q_x_digits < min_so_far) {
             min_so_far = q_x_digits;
-            layer_wmd = layer;
+            layer_wld = layer;
         }
     }
 
-    assert(min_so_far != -1);
-    return layer_wmd;
+    return layer_wld;
 }
 
 int Image::get_answer1() {
@@ -92,15 +92,20 @@ int Image::get_answer1() {
     return count_digit_x_in_layer(1, layer) * count_digit_x_in_layer(2, layer);
 }
 
+inline int Image::get_pixel_in_layer(size_t x, size_t y, size_t layer) {
+    return pixels[layer * layer_size() + y * width + x];
+}
+
 char Image::render_pixel(size_t x, size_t y) {
-    size_t layer_offset = y * width + x;
+    // interpolate layers for (x, y)
     for (size_t layer{}, q_layers{count_layers()}; layer<q_layers; layer++) {
-        int p = pixels[layer * layer_size() + layer_offset];
-        if (p == 0)
-            return ' ';
+        int p = get_pixel_in_layer(x, y, layer);
         if (p == 1)
             return '1';
+        else if (p == 0)
+            return ' ';
     }
+
     return ' ';
 }
 
