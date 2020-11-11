@@ -83,12 +83,12 @@ class MonitoringStation {
 
     public:
 
-
     MonitoringStation(vector<char> &&, const size_t, const size_t);
     static MonitoringStation from_file(const char *);
-    void compute_clockwise_directions();
 
     Point find_best_spot() const;
+    Point &vaporize_next_from(Point &from, size_t &direction_index);
+    Point vaporize_n_asteroids_from(const size_t quantity, Point &from);
 
     void print() const;
     int asteroid_field_get(size_t, size_t) const;
@@ -96,6 +96,7 @@ class MonitoringStation {
     size_t count_asteroids_on_sight(const Point &) const;
     int detect(Point, const Point &) const;
     bool is_inside_field(const Point &) const;
+    void compute_clockwise_directions();
 
     private:
 
@@ -118,12 +119,13 @@ void MonitoringStation::compute_clockwise_directions() {
     Point origin{};
     for (size_t y{1}; y < height; y++)
         for (size_t x{1}; x < width; x++)
-            // weight is tan; op / adj
+            // key is ady/op, sorted to increase
+            // y is inverted as excercise reads
             // direction is the smallest fraction
-            clockwise_directions[static_cast<double>(x)/static_cast<double>(y)] = origin.direction_to(Point{static_cast<int>(x), static_cast<int>(y)});
+            clockwise_directions[static_cast<double>(x)/static_cast<double>(y)] = origin.direction_to(Point{static_cast<int>(x), static_cast<int>(-y)});
 
     // 12:00
-    search_directions.emplace_back(0, 1);
+    search_directions.emplace_back(0, -1);
     // 1st quadrant; (x,y)
     for (auto &pair: clockwise_directions) {
         search_directions.push_back(pair.second);
@@ -131,49 +133,47 @@ void MonitoringStation::compute_clockwise_directions() {
 
     // 3:00
     search_directions.emplace_back(1, 0);
-    // 2st quadrant; (y,-x)
+    // 4th quadrant; rotate to (-y,x)
     for (auto &pair: clockwise_directions) {
-        search_directions.emplace_back(pair.second.y, -pair.second.x);
+        search_directions.emplace_back(-pair.second.y, pair.second.x);
     }
 
     // 6:00
-    search_directions.emplace_back(0, -1);
-    // 3rd quadrant; (-x,-y)
+    search_directions.emplace_back(0, 1);
+    // 3rd quadrant; rotate to (-x,-y)
     for (auto &pair: clockwise_directions) {
         search_directions.emplace_back(-pair.second.x, -pair.second.y);
     }
 
     // 9:00
     search_directions.emplace_back(-1, 0);
-    // 4th quadrant; (-y,x)
+    // 4th quadrant; rotate to (y,-x)
     for (auto &pair: clockwise_directions) {
-        search_directions.emplace_back(-pair.second.y, pair.second.x);
+        search_directions.emplace_back(pair.second.y, -pair.second.x);
     }
 
-    /*
     for (auto &point: search_directions)
         cout << point << endl;
-    */
 }
 
 MonitoringStation::MonitoringStation(vector<char> &&char_input, const size_t width, const size_t height): width(width), height(height)
 {
     cout << "input size " << char_input.size() << endl;
+    asteroid_field.resize(width * height, -1);
 
-    // gather asteroids
-    size_t asteroid_count{};
+    int asteroid_count{};
 
+    // place asteroids in the 4th quadrant as exercise inverts y axis
     for (size_t y{}; y<height; y++) {
         for (size_t x{}; x<width; x++) {
-            char c = char_input[y * height + x];
+            char c = char_input[y * width + x];
             if (c == '#') {
-                asteroid_field.push_back(asteroid_count);
+                asteroid_field_set(x, y, asteroid_count);
                 asteroids.emplace_back(static_cast<int>(x), static_cast<int>(y));
                 asteroid_count++;
             }
             else {
                 assert(c == '.');
-                asteroid_field.push_back(-1);
             }
         }
     }
@@ -221,11 +221,11 @@ void MonitoringStation::print() const {
     }
 }
 
-int MonitoringStation::asteroid_field_get(size_t x, size_t y) const {
+inline int MonitoringStation::asteroid_field_get(size_t x, size_t y) const {
     return asteroid_field.at(y * height + x);
 }
 
-void MonitoringStation::asteroid_field_set(size_t x, size_t y, int val) {
+inline void MonitoringStation::asteroid_field_set(size_t x, size_t y, int val) {
     asteroid_field.at(y * height + x) = val;
 }
 
@@ -274,6 +274,48 @@ size_t MonitoringStation::count_asteroids_on_sight(const Point &asteroid) const 
     return count;
 }
 
+
+Point MonitoringStation::vaporize_n_asteroids_from(const size_t quantity, Point &from) {
+    Point vaporized;
+    size_t direction_index{};
+
+    cout << "1st direction" << search_directions[direction_index] << endl;
+    cout << "2nd direction" << search_directions[direction_index+1] << endl;
+    cout << "3rd direction" << search_directions[direction_index+2] << endl;
+
+    for (size_t i{}; i<quantity; i++) {
+        // overwrite point and let direction_index be incremented
+        vaporized = vaporize_next_from(from, direction_index);
+        cout << "Vaporized " << vaporized << " on iteration #" << i+1 << endl;
+    }
+
+    return vaporized;
+}
+
+// desired side-effects in asteroid_field and direction_index
+Point &MonitoringStation::vaporize_next_from(Point &from, size_t &direction_index) {
+
+    const size_t q_directions{search_directions.size()};
+
+    // track a full round
+    size_t left{q_directions};
+    while (left--) {
+        int asteroid_index = detect(from, search_directions[direction_index % q_directions]);
+        if (asteroid_index >= 0) {
+            // found an asteroid to vaporize
+            Point &vaporized = asteroids[asteroid_index];
+            // delete vector reference in the field
+            asteroid_field_set(vaporized.x, vaporized.y, -1);
+            // increment the clock handle
+            direction_index++;
+            // return a reference
+            return vaporized;
+        }
+        direction_index++;
+    }
+
+    throw runtime_error("No more asteroids to vaporize");
+}
 
 void test_best_spot() {
     vector<char> f1{'.', '#', '.', '.', '#', '.', '.', '.', '.', '.', '#', '#', '#', '#', '#', '.', '.', '.', '.', '#', '.', '.', '.', '#', '#'};
@@ -334,8 +376,14 @@ int main(int argc, char **argv) {
     // test_best_spot();
 
     MonitoringStation m = MonitoringStation::from_file(argv[argc - 1]);
-    auto best_spot = m.find_best_spot();
-    cout << best_spot.x << ',' << best_spot.y << " is the best spot, it can detect " << m.count_asteroids_on_sight(best_spot) << " asteroids." << endl;
+
+    // Part 1
+    Point best_spot = m.find_best_spot();
+    cout << best_spot << " is the best spot, it can detect " << m.count_asteroids_on_sight(best_spot) << " asteroids." << endl;
+
+    // Part 2
+    Point two_hundredth_to_go = m.vaporize_n_asteroids_from(200, best_spot);
+    cout << two_hundredth_to_go << " was the 200th asteroid to get vaporized." << endl;
 
     return 0;
 }
