@@ -369,20 +369,14 @@ class HullBrush {
 
 
 void HullBrush::print() {
-    const int width{5};
-    const int height{5};
+    const int width{40};
+    const int height{15};
     for (int y{height}; y>-height; y--) {
         for (int x{-width}; x<=width; x++) {
-            if (current_position == Point{x, y}) {
-                if (current_direction == Point{0,1}) cout << '^';
-                else if (current_direction == Point{0,-1}) cout << 'v';
-                else if (current_direction == Point{-1,0}) cout << '<';
-                else if (current_direction == Point{1,0}) cout << '>';
-                else throw runtime_error("Invalid direction");
-            }
-            else {
-                cout << (painted_positions.count(Point{x, y}) > 0 ? '#' : '.');
-            }
+            if (painted_positions.count(Point{x, y}) > 0 && painted_positions.at(Point{x, y}))
+                cout << '#';
+            else
+                cout << ' ';
         }
         cout << endl;
     }
@@ -447,19 +441,33 @@ Text parse_csv_ints(const char *filename) {
 int main(int argc, char **argv) {
 
     Text text = parse_csv_ints(argv[argc - 1]);
-    IntcodeComputer computer{0, text};
-    HullBrush brush;
+
+    // Part 1
+    IntcodeComputer computer1{1, text};
+    HullBrush brush1;
 
     // all black
-    while (!computer.has_terminated()) {
-        computer.run(brush.is_current_position_white() ? 1 : 0);
-        assert(computer.output_size() >= 2);
-        brush.paint(computer.pop_output() == 1);
-        brush.turn(computer.pop_output() == 1);
-        brush.step();
+    while (!computer1.has_terminated()) {
+        computer1.run(brush1.is_current_position_white() ? 1 : 0);
+        brush1.paint(computer1.pop_output() == 1);
+        brush1.turn(computer1.pop_output() == 1);
+        brush1.step();
     }
+    cout << "Starting on a black panel, our robot painted " << brush1.count_painted_positions() << " panels" << endl << endl;
 
-    cout << "Our robot painted " << brush.count_painted_positions() << " panels" << endl;
+    // Part 2
+    IntcodeComputer computer2{2, text};
+    HullBrush brush2;
+
+    // now first panel white
+    brush2.paint(true);
+    while (!computer2.has_terminated()) {
+        computer2.run(brush2.is_current_position_white() ? 1 : 0);
+        brush2.paint(computer2.pop_output() == 1);
+        brush2.turn(computer2.pop_output() == 1);
+        brush2.step();
+    }
+    brush2.print();
 
     return 0;
 }
