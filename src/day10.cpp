@@ -95,7 +95,7 @@ class MonitoringStation {
     void asteroid_field_set(size_t, size_t, int);
     size_t count_asteroids_on_sight(const Point &) const;
     int detect(Point, const Point &) const;
-    bool is_inside_field(const Point &) const;
+    inline bool is_inside_field(const Point &) const;
     void compute_clockwise_directions();
 
     private:
@@ -152,8 +152,8 @@ void MonitoringStation::compute_clockwise_directions() {
         search_directions.emplace_back(pair.second.y, -pair.second.x);
     }
 
-    for (auto &point: search_directions)
-        cout << point << endl;
+    // for (auto &point: search_directions)
+    //    cout << point << endl;
 }
 
 MonitoringStation::MonitoringStation(vector<char> &&char_input, const size_t width, const size_t height): width(width), height(height)
@@ -183,7 +183,7 @@ MonitoringStation::MonitoringStation(vector<char> &&char_input, const size_t wid
     compute_clockwise_directions();
 }
 
-bool MonitoringStation::is_inside_field(const Point &p) const {
+inline bool MonitoringStation::is_inside_field(const Point &p) const {
     return p.x >= 0 && p.x < static_cast<int>(width) && p.y >= 0 && p.y < static_cast<int>(height);
 }
 
@@ -279,15 +279,8 @@ Point MonitoringStation::vaporize_n_asteroids_from(const size_t quantity, Point 
     Point vaporized;
     size_t direction_index{};
 
-    cout << "1st direction" << search_directions[direction_index] << endl;
-    cout << "2nd direction" << search_directions[direction_index+1] << endl;
-    cout << "3rd direction" << search_directions[direction_index+2] << endl;
-
-    for (size_t i{}; i<quantity; i++) {
-        // overwrite point and let direction_index be incremented
+    for (size_t i{}; i<quantity; i++)
         vaporized = vaporize_next_from(from, direction_index);
-        cout << "Vaporized " << vaporized << " on iteration #" << i+1 << endl;
-    }
 
     return vaporized;
 }
