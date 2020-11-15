@@ -177,8 +177,6 @@ size_t MoonSystem::count_steps_for_lap() {
         if (q_steps % 1000000 == 0)
             cout << q_steps << endl;
 
-
-
         // match individual positions and velocities for individual x, y, and z's.
         // on the verge of making a lambda but desisted
         if (!x) {
