@@ -1,17 +1,16 @@
-#include <algorithm>
 #include <cassert>
-#include <cstdio>
 #include <fstream>
 #include <iostream>
 #include <map>
-#include <utility>
 #include <queue>
 #include <string>
 #include <vector>
 #include <cmath>
 #include <numeric>
-#include <unordered_map>
 #include <sstream>
+#include <stdio.h>
+#include <unistd.h>
+#include <termios.h>
 
 
 using namespace std;
@@ -20,6 +19,80 @@ using Value = int64_t;
 using Address = int64_t;
 using Text = vector<Value>;
 using Heap = map<Value, Value>;
+
+
+class Point {
+
+    public:
+
+    int x;
+    int y;
+
+    Point(int x, int y) : x(x), y(y) {}
+    Point() : x(0), y(0) {}
+
+    // operator overloads
+    bool operator==(const Point &) const;
+    bool operator!=(const Point &) const;
+    Point& operator+=(const Point &);
+    Point operator+(const Point &) const;
+    Point operator-(const Point &) const;
+    Point operator/(const int) const;
+
+    // vector logic
+    Point direction_to(const Point &) const;
+
+    friend ostream &operator<<(ostream &out, const Point &p) {
+        out << '(' << p.x << ',' << p.y << ')';
+        return out;
+    }
+};
+
+Point Point::operator+(const Point &p) const {
+    return Point{x + p.x, y + p.y};
+}
+
+Point Point::operator-(const Point &p) const {
+    return Point{x - p.x, y - p.y};
+}
+
+Point Point::operator/(const int divisor) const {
+    return Point{x / divisor, y / divisor};
+}
+
+Point& Point::operator+=(const Point &p) {
+    x += p.x;
+    y += p.y;
+    return *this;
+}
+
+inline bool Point::operator==(const Point &p) const {
+    return (x == p.x && y == p.y);
+}
+
+inline bool Point::operator!=(const Point &p) const {
+    return !(*this == p);
+}
+
+
+Point Point::direction_to(const Point &b) const {
+    Point diff{b - *this};
+    int gcd_xy{gcd(diff.x, diff.y)};
+
+    if (gcd_xy== 0) {
+        return diff;
+    }
+    else {
+        return Point{diff/gcd_xy};
+    }
+}
+
+struct PointHasher
+{
+    size_t operator()(const Point& p) const {
+        return ((hash<int>()(p.x) ^ (hash<int>()(p.y) << 1)) >> 1);
+    }
+};
 
 
 class Memory {
@@ -272,7 +345,6 @@ Value IntcodeComputer::run() {
         }
     }
 
-    assert(!output.empty());
     return output.front();
 }
 
@@ -294,6 +366,112 @@ Text parse_csv_ints(const char *filename) {
     return integers;
 }
 
+auto cmp_point = [](const Point& a, const Point& b){
+    return a.y < b.y || (a.y == b.y && a.x < b.x);
+};
+using Field = map<Point, char, decltype(cmp_point)>;
+
+
+void print_field(const Field& field) {
+    int row{}, col{};
+
+    // go through the points sorted by row and col
+    for (const auto &i: field) {
+        // make variables human readable
+        const Point &point = i.first;
+        const char &object = i.second;
+
+        // new line
+        if (point.y > row) {
+            cout << endl;
+            row++;
+            // we don't expect rows to be skipped
+            assert(row == point.y);
+            // carriage return
+            col = 0;
+        }
+
+        assert(col == point.x);
+        cout << object;
+        col++;
+    }
+    cout << endl;
+}
+
+
+Value play_arkanoid(Text text) {
+    IntcodeComputer computer{1, text};
+    Value x, y, value, current_score;
+
+    // map of points sorted by row and col
+    Field field(cmp_point);
+
+    // disable requirement to press enter to have input
+    struct termios old_tio, new_tio;
+    tcgetattr(STDIN_FILENO,&old_tio);
+    new_tio=old_tio;
+    new_tio.c_lflag &=(~ICANON & ~ECHO);
+    tcsetattr(STDIN_FILENO,TCSANOW,&new_tio);
+
+    // computer should wait for input sometimes
+    while (true) {
+        computer.run();
+
+        // gather three-outputs sequences
+        while (computer.output_size()) {
+            assert(computer.output_size() >= 3);
+            x = computer.pop_output();
+            y = computer.pop_output();
+            value = computer.pop_output();
+
+            // special coords for score
+            if (x == -1 && y == 0) {
+                current_score = value;
+                cout << "Current score: " << current_score << endl;
+            }
+            // coords representing field state
+            else {
+                char c;
+                switch (value) {
+                    case 0: c = ' '; break; // space
+                    case 1: c = '#'; break; // wall
+                    case 2: c = '*'; break; // block
+                    case 3: c = '@'; break; // paddle
+                    case 4: c = 'o'; break; // ball
+                    default: throw runtime_error("Invalid object");
+                }
+
+                field[Point{static_cast<int>(x), static_cast<int>(y)}] = c;
+            }
+        }
+
+        // clear the screen, print field and score
+        cout << "\033[2J\033[1;1H";
+        print_field(field);
+        cout << "Score: " << current_score << endl;
+
+        // handle game completion
+        if (computer.has_terminated()) {
+            break;
+        }
+        // handle pad motion from user input
+        else {
+            unsigned char command;
+            command = getchar();
+            switch (command) {
+                case 'h': computer.push_input(-1); break;
+                case 'l': computer.push_input(1); break;
+                default: computer.push_input(0); break; // otherwise stay
+            }
+        }
+    }
+
+    // restore terminal settings
+    tcsetattr(STDIN_FILENO,TCSANOW,&old_tio);
+
+    return current_score;
+}
+
 
 int main(int argc, char **argv) {
     Text text = parse_csv_ints(argv[argc - 1]);
@@ -312,5 +490,12 @@ int main(int argc, char **argv) {
     }
     cout << "There are " << q_blocks << " blocks.\n";
 
+    // Part 2
+    // play for free
+    text[0] = 2;
+    Value final_score = play_arkanoid(text);
+    cout << "Last score was " << final_score << ".\n";
+
     return 0;
 }
+
