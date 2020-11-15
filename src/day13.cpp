@@ -8,9 +8,8 @@
 #include <cmath>
 #include <numeric>
 #include <sstream>
-#include <stdio.h>
-#include <unistd.h>
-#include <termios.h>
+#include <thread>
+#include <chrono>
 
 
 using namespace std;
@@ -399,19 +398,16 @@ void print_field(const Field& field) {
 }
 
 
-Value play_arkanoid(Text text) {
+void play_arkanoid(Text text) {
     IntcodeComputer computer{1, text};
     Value x, y, value, current_score;
 
     // map of points sorted by row and col
     Field field(cmp_point);
 
-    // disable requirement to press enter to have input
-    struct termios old_tio, new_tio;
-    tcgetattr(STDIN_FILENO,&old_tio);
-    new_tio=old_tio;
-    new_tio.c_lflag &=(~ICANON & ~ECHO);
-    tcsetattr(STDIN_FILENO,TCSANOW,&new_tio);
+    // Auto-play
+    Point ball_position;
+    Point pad_position;
 
     // computer should wait for input sometimes
     while (true) {
@@ -427,49 +423,57 @@ Value play_arkanoid(Text text) {
             // special coords for score
             if (x == -1 && y == 0) {
                 current_score = value;
-                cout << "Current score: " << current_score << endl;
             }
             // coords representing field state
             else {
+                Point point{static_cast<int>(x), static_cast<int>(y)};
                 char c;
                 switch (value) {
                     case 0: c = ' '; break; // space
                     case 1: c = '#'; break; // wall
                     case 2: c = '*'; break; // block
-                    case 3: c = '@'; break; // paddle
-                    case 4: c = 'o'; break; // ball
+
+                    // paddle
+                    case 3:
+                        c = '@';
+                        pad_position = point;
+                        break;
+
+                    // ball
+                    case 4:
+                        c = 'o';
+                        ball_position = point;
+                        break; // ball
                     default: throw runtime_error("Invalid object");
                 }
 
-                field[Point{static_cast<int>(x), static_cast<int>(y)}] = c;
+                field[point] = c;
             }
         }
 
         // clear the screen, print field and score
         cout << "\033[2J\033[1;1H";
         print_field(field);
-        cout << "Score: " << current_score << endl;
+        cout << "Current score: " << current_score << endl;
+        // chrono::milliseconds timespan(50);
+        // this_thread::sleep_for(timespan);
 
         // handle game completion
         if (computer.has_terminated()) {
             break;
         }
-        // handle pad motion from user input
+        // auto-play
         else {
-            unsigned char command;
-            command = getchar();
-            switch (command) {
-                case 'h': computer.push_input(-1); break;
-                case 'l': computer.push_input(1); break;
-                default: computer.push_input(0); break; // otherwise stay
-            }
+            if (pad_position.x < ball_position.x)
+                computer.push_input(1);
+
+            else if (pad_position.x > ball_position.x)
+                computer.push_input(-1);
+
+            else
+                computer.push_input(0);
         }
     }
-
-    // restore terminal settings
-    tcsetattr(STDIN_FILENO,TCSANOW,&old_tio);
-
-    return current_score;
 }
 
 
@@ -493,8 +497,7 @@ int main(int argc, char **argv) {
     // Part 2
     // play for free
     text[0] = 2;
-    Value final_score = play_arkanoid(text);
-    cout << "Last score was " << final_score << ".\n";
+    play_arkanoid(text);
 
     return 0;
 }
