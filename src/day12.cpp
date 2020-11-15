@@ -98,6 +98,7 @@ class MoonSystem {
     void walk(size_t q_steps);
     size_t compute_total_energy() const;
     void print() const;
+    size_t count_steps_for_lap();
 
     private:
 
@@ -116,6 +117,10 @@ MoonSystem::MoonSystem(Positions positions, Velocities velocities) : positions(p
 void MoonSystem::print() const {
     cout << "got " << positions.size() << " positions\n";
     for (auto &p: positions)
+        cout << p << endl;
+
+    cout << "got " << velocities.size() << " velocities\n";
+    for (auto &p: velocities)
         cout << p << endl;
 }
 
@@ -156,6 +161,61 @@ inline size_t MoonSystem::compute_total_energy() const {
         total_energy += static_cast<size_t>(compute_energy(positions[i])) * static_cast<size_t>(compute_energy(velocities[i]));
 
     return total_energy;
+}
+
+size_t MoonSystem::count_steps_for_lap() {
+    auto initial_positions = positions;
+    auto initial_velocities = velocities;
+    size_t q_steps{}, x{}, y{}, z{};
+
+    Point cycles{};
+
+    while (!x || !y || !z) {
+        step();
+        q_steps++;
+
+        if (q_steps % 1000000 == 0)
+            cout << q_steps << endl;
+
+
+
+        // match individual positions and velocities for individual x, y, and z's.
+        // on the verge of making a lambda but desisted
+        if (!x) {
+            size_t i{};
+            while (i<length)
+                if (positions[i].x != initial_positions[i].x || velocities[i].x != initial_velocities[i].x)
+                    break;
+                else
+                    i++;
+            if (i == length)
+                x = q_steps;
+        }
+
+        if (!y) {
+            size_t i{};
+            while (i<length)
+                if (positions[i].y != initial_positions[i].y || velocities[i].y != initial_velocities[i].y)
+                    break;
+                else
+                    i++;
+            if (i == length)
+                y = q_steps;
+        }
+
+        if (!z) {
+            size_t i{};
+            while (i<length)
+                if (positions[i].z != initial_positions[i].z || velocities[i].z != initial_velocities[i].z)
+                    break;
+                else
+                    i++;
+            if (i == length)
+                z = q_steps;
+        }
+    }
+
+    return lcm(x, lcm(y, z));
 }
 
 void test() {
@@ -202,11 +262,16 @@ int main() {
         Point{0, 0, 0}
     };
 
+    // Part 1
     MoonSystem ms{positions, velocities};
     ms.walk(1000);
     auto total_energy = ms.compute_total_energy();
-
     cout << "Total energy after 1000 steps: " << total_energy << endl;
+
+    // Part 2
+    MoonSystem ms2{positions, velocities};
+    size_t q_steps = ms2.count_steps_for_lap();
+    cout << "Total laps before coming back to initial state: " << q_steps << endl;
 
     return 0;
 }
