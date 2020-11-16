@@ -11,341 +11,11 @@
 #include <thread>
 #include <chrono>
 
+#include "point.hpp"
+#include "intcode.hpp"
+
 
 using namespace std;
-
-using Value = int64_t;
-using Address = int64_t;
-using Text = vector<Value>;
-using Heap = map<Value, Value>;
-
-
-class Point {
-
-    public:
-
-    int x;
-    int y;
-
-    Point(int x, int y) : x(x), y(y) {}
-    Point() : x(0), y(0) {}
-
-    // operator overloads
-    bool operator==(const Point &) const;
-    bool operator!=(const Point &) const;
-    Point& operator+=(const Point &);
-    Point operator+(const Point &) const;
-    Point operator-(const Point &) const;
-    Point operator/(const int) const;
-
-    // vector logic
-    Point direction_to(const Point &) const;
-
-    friend ostream &operator<<(ostream &out, const Point &p) {
-        out << '(' << p.x << ',' << p.y << ')';
-        return out;
-    }
-};
-
-Point Point::operator+(const Point &p) const {
-    return Point{x + p.x, y + p.y};
-}
-
-Point Point::operator-(const Point &p) const {
-    return Point{x - p.x, y - p.y};
-}
-
-Point Point::operator/(const int divisor) const {
-    return Point{x / divisor, y / divisor};
-}
-
-Point& Point::operator+=(const Point &p) {
-    x += p.x;
-    y += p.y;
-    return *this;
-}
-
-inline bool Point::operator==(const Point &p) const {
-    return (x == p.x && y == p.y);
-}
-
-inline bool Point::operator!=(const Point &p) const {
-    return !(*this == p);
-}
-
-
-Point Point::direction_to(const Point &b) const {
-    Point diff{b - *this};
-    int gcd_xy{gcd(diff.x, diff.y)};
-
-    if (gcd_xy== 0) {
-        return diff;
-    }
-    else {
-        return Point{diff/gcd_xy};
-    }
-}
-
-struct PointHasher
-{
-    size_t operator()(const Point& p) const {
-        return ((hash<int>()(p.x) ^ (hash<int>()(p.y) << 1)) >> 1);
-    }
-};
-
-
-class Memory {
-
-    public:
-    Memory(Text& text);
-    Value get(Value);
-    void set(Address, Value);
-    void print();
-
-    private:
-    Text text;
-    Heap heap;
-};
-
-Memory::Memory(Text &text) {
-    this->text = text;
-}
-
-void Memory::print() {
-    cout << "Text" << endl;
-    for (auto i: text) {
-        cout << i << " ";
-    }
-    cout << endl;
-    cout << "Heap" << endl;
-    for (auto &[k, v]: heap) {
-        cout << k << " : " << v << endl;;
-    }
-}
-
-void Memory::set(Address address, Value value) {
-    assert(address >= 0);
-    if (static_cast<size_t>(address) < text.size()) {
-        // cout << " to the text\n";
-        text[address] = value;
-    }
-    else {
-        // cout << " to the heap!\n";
-        heap[address] = value;
-    }
-}
-
-Value Memory::get(Address address) {
-    assert(address >= 0);
-    if (static_cast<size_t>(address) < text.size()) {
-        return text.at(address);
-    }
-    else {
-        return heap[address];
-    }
-}
-
-
-class IntcodeComputer {
-
-    public:
-    IntcodeComputer(int, Text&);
-    void push_input(Value);
-    Value run();
-    Value pop_output();
-    size_t output_size();
-    bool has_terminated();
-
-    private:
-    inline int parse_opcode(int);
-    int parse_parameter_mode(int, int);
-
-    Value get_read_param(int);
-    Address get_write_address(int);
-    void log(const char *);
-
-    int id;
-    queue<Value> input;
-    queue<Value> output;
-    bool terminated;
-
-    Memory memory;
-    Address ip;
-    Address relative_base;
-};
-
-IntcodeComputer::IntcodeComputer(int id, Text &text) : id(id), memory(text) {
-    relative_base = 0;
-    ip = 0;
-    terminated = false;
-}
-
-inline bool IntcodeComputer::has_terminated() {
-    return terminated;
-}
-
-inline int IntcodeComputer::parse_opcode(int instruction) {
-    return instruction % 100;
-}
-
-inline size_t IntcodeComputer::output_size() {
-    return output.size();
-}
-
-Value IntcodeComputer::pop_output() {
-    Value aux = output.front();
-    output.pop();
-    return aux;
-}
-
-int IntcodeComputer::parse_parameter_mode(int instruction, int parameter_offset) {
-    assert(parameter_offset <= 3);
-    uint32_t divisor = pow(10, parameter_offset + 1);
-    uint32_t  modulo = divisor * 10;
-
-    return (instruction % modulo) / divisor;
-}
-
-Value IntcodeComputer::get_read_param(int offset) {
-    int parameter_mode = parse_parameter_mode(memory.get(ip), offset);
-
-    // position
-    if (parameter_mode == 0)
-        return memory.get(memory.get(ip+offset));
-
-    // immediate
-    if (parameter_mode == 1)
-        return memory.get(ip+offset);
-
-    // relative base
-    if (parameter_mode == 2)
-        return memory.get(memory.get(ip+offset) + relative_base);
-
-    throw runtime_error("Invalid parameter mode");
-}
-
-Address IntcodeComputer::get_write_address(int offset) {
-    int parameter_mode = parse_parameter_mode(memory.get(ip), offset);
-
-    // position
-    if (parameter_mode == 0) {
-        return memory.get(ip+offset);
-    }
-
-    // relative base
-    if (parameter_mode == 2) {
-        return memory.get(ip+offset) + relative_base;
-    }
-
-    throw runtime_error("Invalid write address mode");
-}
-
-void IntcodeComputer::log(const char *msg) {
-    cout << "#" << id << " at ip [" << ip << "] : " << msg << endl;
-}
-
-void IntcodeComputer::push_input(Value value) {
-    input.push(value);
-}
-
-Value IntcodeComputer::run() {
-    // local state to break out of the main loop
-    bool runnable = true;
-
-
-    // main loop
-    // memory.address_in_text(ip) &&
-    while (runnable) {
-
-        Value opcode = parse_opcode(memory.get(ip));
-        switch (opcode) {
-            case 1:
-                // addition
-                memory.set(get_write_address(3), get_read_param(1) + get_read_param(2));
-                ip += 4;
-                break;
-
-            case 2:
-                // multiplication
-                memory.set(get_write_address(3), get_read_param(1) * get_read_param(2));
-                ip += 4;
-                break;
-
-            case 3:
-                // input
-                if (input.empty()) {
-                    // break out of the loop but keep the ip untouched so it can be resumed
-                    runnable = false;
-                }
-                else {
-                    memory.set(get_write_address(1), input.front());
-                    input.pop();
-                    ip += 2;
-                }
-                break;
-
-            case 4:
-                // output
-                // assert(output.empty());
-                output.push(get_read_param(1));
-                // cout << "output: " << output.front() << endl;
-                ip += 2;
-                break;
-
-            case 5:
-                // if first param is non-zero, second to ip
-                if (get_read_param(1))
-                    ip = static_cast<Address>(get_read_param(2));
-                else
-                    ip += 3;
-                break;
-
-            case 6:
-                // if first param is zero, second to ip
-                if (!get_read_param(1))
-                    ip = static_cast<Address>(get_read_param(2));
-                else
-                    ip += 3;
-                break;
-
-            case 7:
-                // if first less than second, 1 to third, otherwise 0
-                if (get_read_param(1) < get_read_param(2))
-                    memory.set(get_write_address(3), 1);
-                else
-                    memory.set(get_write_address(3), 0);
-                ip += 4;
-                break;
-
-            case 8:
-                // if first equals second, 1 to third, otherwise 0
-                if (get_read_param(1) == get_read_param(2))
-                    memory.set(get_write_address(3), 1);
-                else
-                    memory.set(get_write_address(3), 0);
-                ip += 4;
-                break;
-
-            case 9:
-                // add / substract from relative base
-                relative_base += get_read_param(1);
-                ip += 2;
-                break;
-
-            case 99:
-                // graceful exit
-                runnable = false;
-                terminated = true;
-                break;
-
-            default:
-                terminated = true;
-                throw runtime_error("Invalid operation code");
-        }
-    }
-
-    return output.front();
-}
 
 Text parse_csv_ints(const char *filename) {
     fstream file;
@@ -368,13 +38,37 @@ Text parse_csv_ints(const char *filename) {
 auto cmp_point = [](const Point& a, const Point& b){
     return a.y < b.y || (a.y == b.y && a.x < b.x);
 };
+
 using Field = map<Point, char, decltype(cmp_point)>;
 
 
-void print_field(const Field& field) {
-    int row{}, col{};
+class Arkanoid {
+    public:
+
+    Arkanoid(Text &text) : computer(0, text), field(cmp_point) {}
+    void auto_play();
+
+    private:
+
+    void process_computer_output();
+    void refresh_screen();
+
+    IntcodeComputer computer;
+    Field field;
+    size_t q_blocks{};
+    Point ball_position;
+    Point pad_position;
+    Value current_score;
+};
+
+
+void Arkanoid::refresh_screen() {
+
+    // some black magic to clear the screen
+    cout << "\033[2J\033[1;1H";
 
     // go through the points sorted by row and col
+    int row{}, col{};
     for (const auto &i: field) {
         // make variables human readable
         const Point &point = i.first;
@@ -395,84 +89,83 @@ void print_field(const Field& field) {
         col++;
     }
     cout << endl;
+    cout << "Amount of blocks: " << q_blocks << endl;
+    cout << "Current score: " << current_score << endl;
 }
 
+void Arkanoid::process_computer_output() {
+    Value x, y, output;
 
-void play_arkanoid(Text text) {
-    IntcodeComputer computer{1, text};
-    Value x, y, value, current_score;
+    while (computer.output_size()) {
+        // gather three-outputs sequences
+        assert(computer.output_size() >= 3);
+        x = computer.pop_output();
+        y = computer.pop_output();
+        output = computer.pop_output();
 
-    // map of points sorted by row and col
-    Field field(cmp_point);
+        // special coords for score
+        if (x == -1 && y == 0) {
+            current_score = output;
+        }
+        // coords representing field state
+        else {
+            Point point{static_cast<int>(x), static_cast<int>(y)};
+            char c;
+            switch (output) {
+                case 0: c = ' '; break; // space
+                case 1: c = '#'; break; // wall
 
-    // Auto-play
-    Point ball_position;
-    Point pad_position;
+                // block
+                case 2:
+                    c = '*';
+                    q_blocks++;
+                    break;
 
-    // computer should wait for input sometimes
+                // paddle
+                case 3:
+                    c = '@';
+                    pad_position = point;
+                    break;
+
+                // ball
+                case 4:
+                    c = 'o';
+                    ball_position = point;
+                    break; // ball
+
+                default: throw runtime_error("Invalid object");
+            }
+
+            field[point] = c;
+        }
+    }
+}
+
+void Arkanoid::auto_play() {
     while (true) {
+        // ball on intcode side
         computer.run();
 
-        // gather three-outputs sequences
-        while (computer.output_size()) {
-            assert(computer.output_size() >= 3);
-            x = computer.pop_output();
-            y = computer.pop_output();
-            value = computer.pop_output();
+        // analyze what she says
+        process_computer_output();
 
-            // special coords for score
-            if (x == -1 && y == 0) {
-                current_score = value;
-            }
-            // coords representing field state
-            else {
-                Point point{static_cast<int>(x), static_cast<int>(y)};
-                char c;
-                switch (value) {
-                    case 0: c = ' '; break; // space
-                    case 1: c = '#'; break; // wall
-                    case 2: c = '*'; break; // block
+        // tell it to the user
+        refresh_screen();
 
-                    // paddle
-                    case 3:
-                        c = '@';
-                        pad_position = point;
-                        break;
+        // delay so you can see it
+        this_thread::sleep_for(chrono::milliseconds{10});
 
-                    // ball
-                    case 4:
-                        c = 'o';
-                        ball_position = point;
-                        break; // ball
-                    default: throw runtime_error("Invalid object");
-                }
-
-                field[point] = c;
-            }
-        }
-
-        // clear the screen, print field and score
-        cout << "\033[2J\033[1;1H";
-        print_field(field);
-        cout << "Current score: " << current_score << endl;
-        // chrono::milliseconds timespan(50);
-        // this_thread::sleep_for(timespan);
-
-        // handle game completion
-        if (computer.has_terminated()) {
+        // game over?
+        if (computer.has_terminated())
             break;
-        }
-        // auto-play
-        else {
-            if (pad_position.x < ball_position.x)
-                computer.push_input(1);
 
-            else if (pad_position.x > ball_position.x)
-                computer.push_input(-1);
-
-            else
-                computer.push_input(0);
-        }
+        // move joystick to follow the ball
+        if (pad_position.x < ball_position.x)
+            computer.push_input(1);
+        else if (pad_position.x > ball_position.x)
+            computer.push_input(-1);
+        else
+            computer.push_input(0);
     }
 }
 
@@ -480,24 +173,11 @@ void play_arkanoid(Text text) {
 int main(int argc, char **argv) {
     Text text = parse_csv_ints(argv[argc - 1]);
 
-    // Part 1
-    IntcodeComputer computer1{1, text};
-    computer1.run();
-
-    size_t i{}, q_blocks{};
-    while (computer1.output_size()) {
-        Value output = computer1.pop_output();
-        if ((i % 3) == 2 && output == 2)
-            // offset is tile id and tile is block
-            q_blocks++;
-        i++;
-    }
-    cout << "There are " << q_blocks << " blocks.\n";
-
-    // Part 2
     // play for free
     text[0] = 2;
-    play_arkanoid(text);
+
+    Arkanoid arkanoid{text};
+    arkanoid.auto_play();
 
     return 0;
 }
