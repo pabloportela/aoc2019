@@ -69,10 +69,7 @@ void Arkanoid::refresh_screen() {
 
     // go through the points sorted by row and col
     int row{}, col{};
-    for (const auto &i: field) {
-        // make variables human readable
-        const Point &point = i.first;
-        const char &object = i.second;
+    for (const auto &[point, object]: field) {
 
         // new line
         if (point.y > row) {
