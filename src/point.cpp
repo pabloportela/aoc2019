@@ -6,6 +6,11 @@
 using namespace std;
 
 
+std::ostream &operator<<(std::ostream &out, Point p) {
+    out << '(' << p.x << ',' << p.y << ')';
+    return out;
+}
+
 std::ostream &operator<<(std::ostream &out, const Point &p) {
     out << '(' << p.x << ',' << p.y << ')';
     return out;
@@ -29,11 +34,11 @@ Point& Point::operator+=(const Point &p) {
     return *this;
 }
 
-inline bool Point::operator==(const Point &p) const {
+bool Point::operator==(const Point &p) const {
     return (x == p.x && y == p.y);
 }
 
-inline bool Point::operator!=(const Point &p) const {
+bool Point::operator!=(const Point &p) const {
     return !(*this == p);
 }
 
