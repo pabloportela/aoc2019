@@ -28,3 +28,5 @@ struct PointHasher
         return ((std::hash<int>()(p.x) ^ (std::hash<int>()(p.y) << 1)) >> 1);
     }
 };
+
+std::ostream &operator<<(std::ostream &, const Point &p);
