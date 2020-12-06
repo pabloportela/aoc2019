@@ -4,6 +4,8 @@
 #include <map>
 #include <queue>
 #include <vector>
+#include <sstream>
+#include <fstream>
 
 #include "intcode.hpp"
 
@@ -123,6 +125,26 @@ void IntcodeComputer::log(const char *msg) {
 void IntcodeComputer::push_input(Value value) {
     input.push(value);
 }
+
+
+IntcodeComputer IntcodeComputer::from_file(const int id, const char *filename) {
+    fstream file;
+    file.open(filename);
+    assert(file.is_open());
+
+    string tp;
+    Value value;
+    Text text;
+    while (getline(file, tp, ',')) {
+        stringstream ss(tp);
+        ss >> value;
+        text.push_back(value);
+    }
+    file.close();
+
+    return IntcodeComputer(id, text);
+}
+
 
 Value IntcodeComputer::run() {
     // local state to break out of the main loop

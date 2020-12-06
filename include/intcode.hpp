@@ -38,6 +38,7 @@ class IntcodeComputer {
     Value pop_output();
     size_t output_size();
     bool has_terminated();
+    static IntcodeComputer from_file(const int id, const char *);
 
     private:
 
