@@ -1,68 +1,142 @@
+#include <cassert>
+#include <fstream>
 #include <iostream>
 #include <cstdlib>
 #include <array>
 #include <vector>
-
-#define PATTERN_LENGTH 4
+#include <algorithm>
 
 using namespace std;
-using Digits = vector<int>;
-
-const array<int, PATTERN_LENGTH> base_pattern{0, 1, 0, -1};
 
 
-void print(const Digits &v) {
-    for (const auto &i: v)
-        cout << i;
+vector<int> subset(const vector<int> &v, const size_t begin_offset, const size_t end_offset) {
+    vector<int>::const_iterator begin = v.cbegin() + begin_offset;
+    vector<int>::const_iterator end = v.cbegin() + end_offset;
+    return vector<int>{begin, end};
+}
+
+
+void print(const vector<int> &v) {
+    for (const auto &e: v)
+        cout << e;
     cout << endl;
 }
 
 
-// with 2 if pattern is 0, 0, 1, 1, 0, 0, -1, -1
-// term goes from 1 to 8
-
-inline int get_pattern(const int width, const int term) {
-    return base_pattern[(term / width) % PATTERN_LENGTH];
+inline int acc_diff(const vector<int> &acc, const size_t position, const size_t length) {
+    int acc_begin = position == 0 ? 0 : acc[position-1];
+    int acc_end = acc[min(position + length - 1, acc.size() - 1)];
+    return acc_end - acc_begin;
 }
 
 
-int process_digit(const Digits &input, const size_t digit_offset) {
+int process_digit(const size_t digit_offset, const vector<int> &acc) {
+    auto width{digit_offset + 1};
+    auto i{digit_offset};
     int result{};
-    int pattern_offset{};
-    for (const auto &digit: input) {
-        result += digit * get_pattern(digit_offset + 1, pattern_offset + 1);
-        ++pattern_offset;
+    int sign{1};
+
+    while (i < acc.size()) {
+        result += sign * acc_diff(acc, i, width);
+        sign *= -1;
+        // jump to next 1, or -1 section
+        i += width * 2;
     }
 
     return abs(result % 10);
 }
 
 
-Digits phase(const Digits &input) {
-    Digits output{input};
-    for (size_t i{}; i<input.size(); i++)
-       output[i] = process_digit(input, i);
+vector<int> compute_accumulated(const vector<int> &input) {
+    vector<int> acc(input.size());
+    acc[0] = input[0];
+    for (size_t i{1}; i<input.size(); ++i)
+        acc[i] = acc[i-1] + input[i];
+
+    return acc;
+}
+
+
+vector<int> phase(const vector<int> &input) {
+    // compute acccumulated to reuse in every digit
+    auto acc = compute_accumulated(input);
+
+    // process each digit
+    vector<int> output(input.size());
+    for (size_t i{}; i<output.size(); i++)
+       output[i] = process_digit(i, acc);
 
     return output;
 }
 
 
-Digits fft(const Digits &digits, const size_t q_phases) {
-    Digits result{digits};
-    for (size_t i{}; i<q_phases; i++)
+vector<int> fft(const vector<int> &digits, const size_t q_phases) {
+    vector<int> result{digits};
+    for (size_t i{}; i<q_phases; ++i)
         result = phase(result);
 
     return result;
 }
 
 
-int main() {
-    // Digits input{1,2,3,4,5,6,7,8};
-    // Digits input{8,0,8,7,1,2,2,4,5,8,5,9,1,4,5,4,6,6,1,9,0,8,3,2,1,8,6,4,5,5,9,5};
-    // Digits input{1,9,6,1,7,8,0,4,2,0,7,2,0,2,2,0,9,1,4,4,9,1,6,0,4,4,1,8,9,9,1,7};
-    Digits input{5,9,7,1,3,1,3,7,2,6,9,8,0,1,0,9,9,6,3,2,6,5,4,1,8,1,2,8,6,2,3,3,9,3,5,2,1,9,8,1,1,7,5,5,5,0,0,4,5,5,3,8,0,9,3,4,7,7,0,7,6,5,5,6,9,1,3,1,7,3,4,5,9,6,7,6,3,6,9,5,5,0,9,2,7,9,5,6,1,6,8,5,7,8,8,8,5,6,4,7,1,4,2,0,0,6,0,1,1,8,7,3,8,3,0,7,7,1,2,1,8,4,6,6,6,9,7,9,7,2,7,7,0,5,7,9,9,2,0,2,1,6,4,3,9,0,6,3,5,6,8,8,4,3,9,7,0,1,7,6,3,2,8,8,5,3,5,5,7,4,1,1,3,2,8,3,9,7,5,6,1,3,4,3,0,0,5,8,3,3,2,8,9,0,2,1,5,6,8,5,1,0,2,6,5,6,1,9,3,0,5,6,9,3,9,7,6,5,5,9,0,4,7,3,2,3,7,0,3,1,5,8,4,3,2,6,0,2,8,1,6,2,8,3,1,8,7,2,6,9,4,7,4,2,4,7,3,0,9,4,4,9,8,6,9,2,6,9,0,9,2,6,3,7,8,5,6,0,2,1,5,0,6,5,1,1,2,0,5,5,2,7,7,0,4,2,9,5,7,1,9,2,8,8,4,4,8,4,7,3,6,8,8,5,0,8,5,7,7,6,0,9,5,6,0,1,2,5,8,1,3,8,8,2,7,4,0,7,4,7,9,8,6,4,9,6,6,5,9,5,8,0,5,6,8,4,2,8,3,7,3,6,1,1,4,1,0,4,3,6,1,2,0,0,5,1,1,1,4,9,4,0,3,4,1,5,2,6,4,0,0,5,2,4,2,8,0,2,5,5,2,2,2,0,9,3,0,5,1,4,4,8,6,1,8,8,6,6,1,2,8,2,6,9,1,4,4,7,2,6,7,0,7,9,8,6,9,7,4,6,2,2,2,1,9,3,5,6,3,3,5,2,3,7,4,5,4,1,2,6,9,4,3,1,5,3,1,6,6,6,9,0,3,1,2,7,4,9,2,4,6,7,4,4,6,1,0,0,1,8,4,4,4,7,6,5,8,3,5,7,5,7,9,1,8,9,0,7,0,6,9,8,7,0,7,5,4,0,7,2,1,9,5,9,5,2,7,6,9,2,4,6,6,4,1,4,2,9,0,6,2,6,6,3,3,0,1,7,1,6,4,8,1,0,6,2,7,0,9,9,2,4,3,2,8,1,6,5,3,1,3,9,9,9,6,0,2,5,6,6,1,9,9,3,6,1,0,7,6,3,9,4,7,9,8,7,9,4,2,7,4,1,8,3,1,1,8,5,0,0,2,7,5,6,3,6,4,2,4,9,9,9,2,0,2,8,0,5,0,3,1,5,7,0,4,5,3,1,5,6,7,9,1,6,8,2,1,9,4,4};
-    Digits output = fft(input, 100);
-    print(output);
+vector<int> parse_digits(const char *filename) {
+    ifstream file{filename};
+    assert(file.is_open());
+    char digit;
+    vector<int> digits;
+
+    while (file >> digit) {
+        digits.push_back(digit - '0');
+    }
+
+    return digits;
+}
+
+inline vector<int> repeat(const vector<int> &input, const size_t n) {
+    vector<int> output(input.size() * n);
+    for (size_t i{}; i<n; ++i)
+        copy(input.cbegin(), input.cend(), output.begin() + (i * input.size()));
+
+    return output;
+}
+
+
+void test_acc() {
+    vector<int> input{1,2,3,4,5,6,7,8};
+    auto acc = compute_accumulated(input);
+    print(input);
+    print(acc);
+    assert(acc_diff(acc,0,1) == 1);
+    assert(acc_diff(acc,0,2) == 3);
+    assert(acc_diff(acc,0,8) == 36);
+    assert(acc_diff(acc,1,1) == 2);
+    assert(acc_diff(acc,1,2) == 5);
+    assert(acc_diff(acc,1,5) == 20);
+    assert(acc_diff(acc,2,3) == 12);
+    assert(acc_diff(acc,5,3) == 21);
+    assert(acc_diff(acc,5,4) == 21);
+    assert(acc_diff(acc,5,48) == 21);
+    cout << "Acc diff should work\n";
+}
+
+
+int main(int argc, char **argv) {
+    vector<int> input = parse_digits(argv[argc - 1]);
+
+    // part 1
+    {
+        vector<int> result = fft(input, 100);
+        print(subset(result, 0, 8));
+    }
+
+
+    // part 2
+    {
+        vector<int> repeated_input = repeat(input, 10000);
+        vector<int> result = fft(repeated_input, 100);
+        size_t msg_offset{5971313};
+        print(subset(result, msg_offset, msg_offset + 8));
+    }
 
     return 0;
 }
