@@ -19,6 +19,7 @@ class Scaffold {
     public:
     Scaffold(IntcodeComputer &);
     int compute_sum_of_alignment_parameters();
+    void traverse_field();
 
     private:
     inline bool is_intersection(const Point &);
@@ -33,6 +34,10 @@ Scaffold::Scaffold(IntcodeComputer &computer) {
     map_scaffold(computer);
 }
 
+void Scaffold::traverse_field() {
+
+}
+
 void Scaffold::map_scaffold(IntcodeComputer &computer) {
     // maps scaffolding to a set of points
 
@@ -43,15 +48,38 @@ void Scaffold::map_scaffold(IntcodeComputer &computer) {
         while (computer.output_size()) {
             char c = static_cast<char>(computer.pop_output());
             cout << c;
+            // end of line
             if (c == '\n') {
                 ++y;
                 x = 0;
             }
-            else {
-                if (c != '.')
-                    // v, ^, <, >, #
-                    field.insert(Point{x, y});
+            // empty space
+            else if (c == '.') {
                 ++x;
+            }
+            // scaffold
+            else {
+                Point p{x, y};
+                ++x;
+                field.insert(p);
+
+                // ^, >, v or <
+                if (c != '#') {
+                    current_position = p;
+
+                    if (c == '^')
+                        current_direction = Point(0,1);
+
+                    else if (c == '>')
+                        current_direction = Point(1,0);
+
+                    else if (c == 'v')
+                        current_direction = Point(0,-1);
+
+                    else if (c == '<')
+                        current_direction = Point(-1,0);
+                }
+
             }
         }
     }
