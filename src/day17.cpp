@@ -4,7 +4,6 @@
 #include <iostream>
 #include <numeric>
 #include <string>
-#include <unordered_map>
 #include <unordered_set>
 
 #include "point.hpp"
@@ -15,12 +14,29 @@ using namespace std;
 
 using PositionSet = unordered_set<Point, PointHasher>;
 
+class Scaffold {
 
-PositionSet map_field(IntcodeComputer &computer) {
+    public:
+    Scaffold(IntcodeComputer &);
+    int compute_sum_of_alignment_parameters();
+
+    private:
+    inline bool is_intersection(const Point &);
+    void map_scaffold(IntcodeComputer &);
+
+    PositionSet field;
+    Point current_position;
+    Point current_direction;
+};
+
+Scaffold::Scaffold(IntcodeComputer &computer) {
+    map_scaffold(computer);
+}
+
+void Scaffold::map_scaffold(IntcodeComputer &computer) {
     // maps scaffolding to a set of points
 
     int x{}, y{};
-    PositionSet field;
 
     while (!computer.has_terminated()) {
         computer.run();
@@ -39,12 +55,10 @@ PositionSet map_field(IntcodeComputer &computer) {
             }
         }
     }
-
-    return field;
 }
 
 
-inline bool is_intersection(const Point &position, const PositionSet &field) {
+inline bool Scaffold::is_intersection(const Point &position) {
     return (
         field.count(position + Point{0,1}) &&
         field.count(position + Point{0,-1}) &&
@@ -53,10 +67,10 @@ inline bool is_intersection(const Point &position, const PositionSet &field) {
     );
 }
 
-int compute_sum_of_alignment_parameters(const PositionSet &field) {
+int Scaffold::compute_sum_of_alignment_parameters() {
     int r{};
     for (const auto &p: field)
-        if (is_intersection(p, field)) {
+        if (is_intersection(p)) {
             r += p.x * p.y;
             cout << p << endl;
         }
@@ -66,13 +80,13 @@ int compute_sum_of_alignment_parameters(const PositionSet &field) {
 
 int main(int argc, char **argv) {
     auto computer = IntcodeComputer::from_file(0, argv[argc - 1]);
-    PositionSet field = map_field(computer);
+
+    Scaffold scaffold{computer};
 
     // sum of alignment parameters
-    int soap = compute_sum_of_alignment_parameters(field);
+    int soap = scaffold.compute_sum_of_alignment_parameters();
 
     cout << "soap: " << soap << endl;
 
     return 0;
 }
-
