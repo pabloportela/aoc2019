@@ -19,6 +19,10 @@ Point Point::operator-(const Point &p) const {
     return Point{x - p.x, y - p.y};
 }
 
+Point Point::operator*(const int divisor) const {
+    return Point{x * divisor, y * divisor};
+}
+
 Point Point::operator/(const int divisor) const {
     return Point{x / divisor, y / divisor};
 }
@@ -47,4 +51,29 @@ Point Point::direction_to(const Point &b) const {
     else {
         return Point{diff/gcd_xy};
     }
+}
+
+Point Point::left() const {
+    // up
+    if (*this == Point{0,1})
+        return Point{-1,0};
+
+    // down
+    else if (*this == Point{0,-1})
+        return Point{1,0};
+
+    // left
+    else if (*this == Point{-1,0})
+        return Point{0,-1};
+
+    // right
+    else if (*this == Point{1,0})
+        return Point{0,1};
+
+    else
+        throw runtime_error("invalid direction");
+}
+
+Point Point::right() const {
+    return left() * -1;
 }

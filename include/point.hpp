@@ -16,10 +16,13 @@ class Point {
     Point& operator+=(const Point &);
     Point operator+(const Point &) const;
     Point operator-(const Point &) const;
+    Point operator*(const int) const;
     Point operator/(const int) const;
 
     // vector logic
     Point direction_to(const Point &) const;
+    Point left() const;
+    Point right() const;
 };
 
 struct PointHasher

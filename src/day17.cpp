@@ -24,6 +24,8 @@ class Scaffold {
     private:
     inline bool is_intersection(const Point &);
     void map_scaffold(IntcodeComputer &);
+    bool turn();
+    void forward();
 
     PositionSet field;
     Point current_position;
@@ -34,8 +36,39 @@ Scaffold::Scaffold(IntcodeComputer &computer) {
     map_scaffold(computer);
 }
 
-void Scaffold::traverse_field() {
+bool Scaffold::turn() {
+    // try left
+    Point new_direction = current_direction.left();
+    if (field.count(current_position + new_direction)) {
+        current_direction = new_direction;
+        cout << 'L';
+        return true;
+    }
 
+    // try right
+    new_direction = current_direction.right();
+    if (field.count(current_position + new_direction)) {
+        current_direction = new_direction;
+        cout << 'R';
+        return true;
+    }
+
+    return false;
+}
+
+void Scaffold::traverse_field() {
+    while (turn())
+        forward();
+}
+
+void Scaffold::forward() {
+    int i{};
+    while (field.count(current_position + current_direction)) {
+        current_position += current_direction;
+        ++i;
+    }
+    assert(i);
+    cout << i << endl;
 }
 
 void Scaffold::map_scaffold(IntcodeComputer &computer) {
@@ -79,7 +112,6 @@ void Scaffold::map_scaffold(IntcodeComputer &computer) {
                     else if (c == '<')
                         current_direction = Point(-1,0);
                 }
-
             }
         }
     }
@@ -113,8 +145,9 @@ int main(int argc, char **argv) {
 
     // sum of alignment parameters
     int soap = scaffold.compute_sum_of_alignment_parameters();
-
     cout << "soap: " << soap << endl;
+
+    scaffold.traverse_field();
 
     return 0;
 }
