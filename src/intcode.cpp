@@ -32,11 +32,9 @@ void Memory::print() {
 void Memory::set(Address address, Value value) {
     assert(address >= 0);
     if (static_cast<size_t>(address) < text.size()) {
-        // cout << " to the text\n";
         text[address] = value;
     }
     else {
-        // cout << " to the heap!\n";
         heap[address] = value;
     }
 }
@@ -52,7 +50,7 @@ Value Memory::get(Address address) {
 }
 
 
-IntcodeComputer::IntcodeComputer(int id, Text &text) : id(id), memory(text) {
+IntcodeComputer::IntcodeComputer(int id, Text text) : id(id), memory(text) {
     relative_base = 0;
     ip = 0;
     terminated = false;
@@ -123,6 +121,7 @@ void IntcodeComputer::log(const char *msg) {
 }
 
 void IntcodeComputer::push_input(Value value) {
+    cout << value;
     input.push(value);
 }
 

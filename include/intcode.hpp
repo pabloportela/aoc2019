@@ -32,7 +32,7 @@ class IntcodeComputer {
 
     public:
 
-    IntcodeComputer(int, Text&);
+    IntcodeComputer(int, Text);
     void push_input(Value);
     Value run();
     Value pop_output();
