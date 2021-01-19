@@ -1,4 +1,8 @@
 #include <algorithm>
+#include <array>
+
+using namespace std;
+
 
 class Point {
 
@@ -33,3 +37,9 @@ struct PointHasher
 };
 
 std::ostream &operator<<(std::ostream &, const Point &p);
+
+auto cmp_point = [](const Point& a, const Point& b){
+    return a.y < b.y || (a.y == b.y && a.x < b.x);
+};
+
+static const array<Point, 4> directions{Point{1, 0}, Point{0, 1}, Point{-1, 0}, Point{0, -1}};

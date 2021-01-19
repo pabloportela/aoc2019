@@ -121,7 +121,6 @@ void IntcodeComputer::log(const char *msg) {
 }
 
 void IntcodeComputer::push_input(Value value) {
-    cout << value;
     input.push(value);
 }
 

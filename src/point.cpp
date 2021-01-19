@@ -75,5 +75,5 @@ Point Point::left() const {
 }
 
 Point Point::right() const {
-    return -1 * left();
+    return left() * (-1);
 }
